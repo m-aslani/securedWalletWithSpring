@@ -1,5 +1,6 @@
 package com.example.securedwalletwithspring.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -36,7 +37,8 @@ public class Account {
     private String accountIban;
 
     @OneToOne
-    @JoinColumn(name = "user-id")
+    @JoinColumn(name = "user_id")
+    @JsonIgnore
     private User user;
 
     // Generates 16 random digits to create account Number.
@@ -53,7 +55,8 @@ public class Account {
     public String generateAccountIban() {
         Random random = new Random();
         StringBuilder accountIban = new StringBuilder();
-        for (int i = 0; i < 24; i++) {
+        accountIban.append("IR");
+        for (int i = 0; i < 22; i++) {
             accountIban.append(random.nextInt(10));
         }
         return accountIban.toString();

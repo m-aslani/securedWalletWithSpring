@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -37,6 +38,7 @@ public class User {
     private String email;
 
     @NotBlank(message = "user phone number can NOT be Empty!")
+    @Pattern(regexp = "^(\\+98|0)?9\\d{9}$" , message = "phone number is not valid!")
     private String phoneNumber;
 
     @NotBlank(message = "user birth date can NOT be Empty!")
@@ -48,7 +50,20 @@ public class User {
     @NotNull(message = "user militaryStatus can NOT be Empty!")
     private boolean militaryStatus;
 
-    @OneToOne(mappedBy = "user")
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     private Account account;
+
+    public boolean checkMilitaryStatus(String birthDate , String gender , boolean militaryStatus) {
+        if(gender.equals("male") && !militaryStatus) {
+            String[] date = birthDate.split("/");
+            int year = Integer.parseInt(date[2]);
+            int currentYear = LocalDate.now().getYear();
+            int age =  currentYear - year;
+            if(age > 18 ){
+                return true;
+            }
+        }
+        return false;
+    }
 
 }

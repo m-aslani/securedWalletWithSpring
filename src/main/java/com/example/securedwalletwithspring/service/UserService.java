@@ -4,6 +4,7 @@ import com.example.securedwalletwithspring.dto.UserLoginDto;
 import com.example.securedwalletwithspring.dto.UserRegistrationDto;
 import com.example.securedwalletwithspring.entity.Account;
 import com.example.securedwalletwithspring.entity.User;
+import com.example.securedwalletwithspring.exception.UserNotFoundException;
 import com.example.securedwalletwithspring.repository.AccountRepository;
 import com.example.securedwalletwithspring.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +51,9 @@ public class UserService {
         user.setGender(userRegistrationDto.getGender());
         user.setMilitaryStatus(userRegistrationDto.isMilitaryStatus());
 
+        boolean validAccount = user.checkMilitaryStatus(user.getBirthDate() , user.getGender() , user.isMilitaryStatus());
+
+        if(!validAccount) {
         if(userRegistrationDto.getInitialAmount() > 10) {
             Account account = new Account();
             account.setCreatedAt(LocalDate.now());
@@ -68,14 +72,18 @@ public class UserService {
                     break;
                 }
             }
+            account.setUser(user);
+            user.setAccount(account);
+            userRepository.save(user);
             accountRepository.save(account);
         }else {
-            throw new RuntimeException("Initial amount must be greater than 10$");
+            throw new UserNotFoundException("Initial amount must be greater than 10$");
+        }}else {
+            throw new UserNotFoundException("you can not create account due to your military status");
         }
 
-
 //        System.out.println(user.getNationalId());
-        return userRepository.save(user);
+        return user;
     }
 
     public String loginUser(UserLoginDto userLoginDto) {
@@ -90,4 +98,5 @@ public class UserService {
     public Optional<User> getUserByNationalId(String nationalId) {
         return userRepository.findByNationalId(nationalId);
     }
+
 }

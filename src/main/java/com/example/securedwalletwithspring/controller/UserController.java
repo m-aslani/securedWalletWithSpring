@@ -3,6 +3,7 @@ package com.example.securedwalletwithspring.controller;
 import com.example.securedwalletwithspring.dto.UserLoginDto;
 import com.example.securedwalletwithspring.dto.UserRegistrationDto;
 import com.example.securedwalletwithspring.entity.User;
+import com.example.securedwalletwithspring.exception.UserNotFoundException;
 import com.example.securedwalletwithspring.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,8 +25,14 @@ public class UserController {
 
     @PostMapping("/users/register")
     public ResponseEntity<User> register(@Valid @RequestBody UserRegistrationDto userRegistrationDto) {
-        User user = userService.registerUser(userRegistrationDto);
-        return ResponseEntity.ok(user);
+        Optional<User> oldUser = userService.getUserByNationalId(userRegistrationDto.getNationalId());
+        if (oldUser.isEmpty()) {
+            User user = userService.registerUser(userRegistrationDto);
+            return ResponseEntity.ok(user);
+        }
+        else {
+            throw new UserNotFoundException("User with NationalId " + userRegistrationDto.getNationalId() + " already exists");
+        }
     }
 
     @PostMapping("/users/login")
@@ -36,9 +43,8 @@ public class UserController {
             return ResponseEntity.ok(token);
         }
         else {
-            return ResponseEntity.status(401).body("Not Registered");
+            throw new UserNotFoundException("User with " + userLoginDto.getNationalId() + " not found.");
         }
-
     }
 
     @GetMapping("/test")
