@@ -1,2 +1,7 @@
-package com.example.securedwalletwithspring.repository;public interface TransactionRepository {
+package com.example.securedwalletwithspring.repository;
+
+import com.example.securedwalletwithspring.entity.Transaction;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 }
