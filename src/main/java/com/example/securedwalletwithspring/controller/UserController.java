@@ -7,6 +7,7 @@ import com.example.securedwalletwithspring.exception.UserNotFoundException;
 import com.example.securedwalletwithspring.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,14 +25,14 @@ public class UserController {
     private UserService userService;
 
     @PostMapping("/users/register")
-    public ResponseEntity<User> register(@Valid @RequestBody UserRegistrationDto userRegistrationDto) {
+    public ResponseEntity<Object> register(@Valid @RequestBody UserRegistrationDto userRegistrationDto) {
         Optional<User> oldUser = userService.getUserByNationalId(userRegistrationDto.getNationalId());
         if (oldUser.isEmpty()) {
             User user = userService.registerUser(userRegistrationDto);
             return ResponseEntity.ok(user);
         }
         else {
-            throw new UserNotFoundException("User with NationalId " + userRegistrationDto.getNationalId() + " already exists");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("User with NationalId " + userRegistrationDto.getNationalId() + " already exists");
         }
     }
 
@@ -43,7 +44,7 @@ public class UserController {
             return ResponseEntity.ok(token);
         }
         else {
-            throw new UserNotFoundException("User with " + userLoginDto.getNationalId() + " not found.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User with NationalId " + userLoginDto.getNationalId() + " not found");
         }
     }
 

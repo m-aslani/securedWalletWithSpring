@@ -1,9 +1,6 @@
 package com.example.securedwalletwithspring.dto;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,6 +13,7 @@ import java.time.LocalDate;
 public class UserRegistrationDto {
 
     @NotBlank(message = "user national ID can NOT be Empty!")
+    @Size(min = 10,max = 10,message = "Iranian national ID must include 10 digits!")
     private String nationalId;
 
     @NotBlank(message = "user first name can NOT be Empty!")
@@ -28,10 +26,11 @@ public class UserRegistrationDto {
     private String password;
 
     @NotBlank(message = "user email can NOT be Empty!")
-    @Email
+    @Email(regexp = "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$" , message = "E-mail is not valid!")
     private String email;
 
     @NotBlank(message = "user phone number can NOT be Empty!")
+    @Pattern(regexp = "^(\\+98|0)?9\\d{9}$" , message = "phone number is not valid!")
     private String phoneNumber;
 
     @NotBlank(message = "user birth date can NOT be Empty!")

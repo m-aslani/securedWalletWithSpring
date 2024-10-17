@@ -1,10 +1,7 @@
 package com.example.securedwalletwithspring.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,6 +19,7 @@ public class User {
     private Long id;
 
     @NotBlank(message = "user national ID can NOT be Empty!")
+    @Size(min = 10,max = 10,message = "Iranian national ID must include 10 digits!")
     private String nationalId;
 
     @NotBlank(message = "user first name can NOT be Empty!")
@@ -34,7 +32,7 @@ public class User {
     private String password;
 
     @NotBlank(message = "user email can NOT be Empty!")
-    @Email
+    @Email(regexp = "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$" , message = "E-mail is not valid!")
     private String email;
 
     @NotBlank(message = "user phone number can NOT be Empty!")

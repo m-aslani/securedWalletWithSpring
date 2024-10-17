@@ -50,7 +50,7 @@ public class TransactionService {
                     throw new AccountNotFoundException("Account number: " + transactionDto.getSender() + " does not exist");
                 }
             } else {
-                throw new InvalidTransactionException("Sender and Receiver cannot be the same");
+                throw new InvalidTransactionException("Sender and Receiver must be the same");
             }
         }else{
             throw new InvalidTransactionException("Sender National Id "+transactionDto.getSenderNationalID()+" does not have access to account number : "+transactionDto.getSender());
@@ -58,6 +58,8 @@ public class TransactionService {
     }
 
     public void transferMoney(TransactionDto transactionDto) {
+        Account existingAccount = checkOwnerOfAccount(transactionDto);
+        if(existingAccount.getAccountNumber().equals(transactionDto.getSender())) {
         if(!transactionDto.getSender().equals(transactionDto.getReceiver())) {
             Optional<Account> senderAccount = accountRepository.findByAccountNumber(transactionDto.getSender());
             Optional<Account> receiverAccount = accountRepository.findByAccountNumber(transactionDto.getReceiver());
@@ -83,11 +85,19 @@ public class TransactionService {
         }else {
             throw new InvalidTransactionException("Sender and Receiver cannot be the same");
         }
+        }else{
+            throw new InvalidTransactionException("Sender National Id "+transactionDto.getSenderNationalID()+" does not have access to account number : "+transactionDto.getSender());
+        }
     }
 
     public List<Transaction> getTransactionHistory(TransactionHistoryDto transactionHistoryDto) {
+        Account existingAccount = checkOwnerOfAccount(transactionHistoryDto);
+        if(existingAccount.getAccountNumber().equals(transactionHistoryDto.getAccountNumber())) {
         Optional<Account> account = accountRepository.findByAccountNumber(transactionHistoryDto.getAccountNumber());
         return transactionRepository.findByAccount(account.get());
+        }else{
+            throw new InvalidTransactionException("Sender National Id "+transactionHistoryDto.getSenderNationalID()+" does not have access to account number : "+transactionHistoryDto.getAccountNumber());
+        }
     }
 
     public void createTransaction(TransactionDto transactionDto, Account account){
@@ -108,7 +118,19 @@ public class TransactionService {
             }
         }
 //        return user.get().getAccount();
-        throw new AccountNotFoundException("Account number: "+transactionDto.getSenderNationalID() + " does not exist");
+        throw new AccountNotFoundException("Account number for: "+transactionDto.getSenderNationalID() + " does not exist");
+    }
+
+    public Account checkOwnerOfAccount(TransactionHistoryDto transactionHistoryDto) {
+        Optional<User> user = userRepository.findByNationalId(transactionHistoryDto.getSenderNationalID());
+        if(user.isPresent()) {
+            if(user.get().getAccount() != null) {
+//                System.out.println(account.get().getAccountBalance());
+                return user.get().getAccount();
+            }
+        }
+//        return user.get().getAccount();
+        throw new AccountNotFoundException("Account number for: "+transactionHistoryDto.getSenderNationalID() + " does not exist");
     }
 
     public double getTodayTotalTransactions(Account account) {
