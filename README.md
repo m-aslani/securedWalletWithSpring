@@ -20,6 +20,7 @@ The flow of the application is as follows:
 POINT: now you have access to other services.
 
 3- you can get your personal information
+
 **** API (GET) : http://127.0.0.1:8080/user ****
 
 ![image](https://github.com/user-attachments/assets/26c487bd-ead4-4e8d-905b-e5936f3d9276)
