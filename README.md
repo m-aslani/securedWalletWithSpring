@@ -3,6 +3,7 @@ This is a wallet application built with Spring Boot, utilizing MVC, JPA, Securit
 The application uses H2 as its database and Postman as its UI.
 
 The flow of the application is as follows:
+
 1- you have to register first
 
 **** API (POST) : http://127.0.0.1:8080/users/register ****
