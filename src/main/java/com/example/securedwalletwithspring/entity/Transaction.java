@@ -28,7 +28,7 @@ public class Transaction {
     @NotNull(message = "Transaction time stamp can not be null!")
     private LocalDateTime timestamp;
 
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.REMOVE)
     @JoinColumn(name = "account_id")
     private Account account;
 

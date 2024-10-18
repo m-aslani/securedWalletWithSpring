@@ -11,6 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Random;
 
 @Data
@@ -40,6 +41,9 @@ public class Account {
     @JoinColumn(name = "user_id")
     @JsonIgnore
     private User user;
+
+    @OneToMany(mappedBy = "account", orphanRemoval = true)
+    private List<Transaction> transactions;
 
     // Generates 16 random digits to create account Number.
     public String generateAccountNumber() {
