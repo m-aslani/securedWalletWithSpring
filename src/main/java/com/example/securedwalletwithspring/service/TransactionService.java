@@ -100,6 +100,28 @@ public class TransactionService {
         }
     }
 
+    public List<Transaction> getTransactionHistoryBetweenDate(TransactionHistoryDto transactionHistoryDto , LocalDate startDate , LocalDate endDate) {
+        Account existingAccount = checkOwnerOfAccount(transactionHistoryDto);
+        if(existingAccount.getAccountNumber().equals(transactionHistoryDto.getAccountNumber())) {
+            LocalDate now = LocalDate.now();
+            if(startDate.isAfter(now)){
+                throw new InvalidTransactionException("Invalid Start Date");
+            }
+            if(endDate.isAfter(now)){
+                throw new InvalidTransactionException("Invalid End Date");
+            }
+            if(startDate.isAfter(endDate)){
+                throw new InvalidTransactionException("Start Date cannot be after End Date");
+            }
+            return transactionRepository.findByTimestampBetween(startDate , endDate);
+        }else {
+            throw new InvalidTransactionException("Sender National Id "+transactionHistoryDto.getSenderNationalID()+" does not have access to account number : "+transactionHistoryDto.getAccountNumber());
+
+        }
+    }
+
+    //Helper Methods :
+
     public void createTransaction(TransactionDto transactionDto, Account account){
         Transaction transaction = new Transaction();
         transaction.setAmount(transactionDto.getAmount());

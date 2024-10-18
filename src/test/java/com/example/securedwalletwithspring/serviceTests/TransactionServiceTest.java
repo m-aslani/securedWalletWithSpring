@@ -16,8 +16,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -226,20 +228,151 @@ public class TransactionServiceTest {
     public void testGetTransactionsHistorySuccess(){
         TransactionHistoryDto transactionHistoryDto = new TransactionHistoryDto();
         transactionHistoryDto.setAccountNumber("1000000000000000");
+        transactionHistoryDto.setSenderNationalID("1234567891");
 
         Account account = new Account();
         account.setAccountNumber("1000000000000000");
+
+        User user = new User();
+        user.setNationalId("1234567891");
+        user.setAccount(account);
 
         List<Transaction> transactions = List.of(new Transaction(1L,600,"credit", LocalDateTime.now(),account),
                 new Transaction(2L,300,"credit", LocalDateTime.now(),account));
 
         when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
         when(transactionRepository.findByAccount(account)).thenReturn(transactions);
+        when(userRepository.findByNationalId("1234567891")).thenReturn(Optional.of(user));
 
         List<Transaction> history = transactionService.getTransactionHistory(transactionHistoryDto);
 
         assertEquals(history.size(), 2);
         assertEquals(history.get(0).getAmount(), 600);
         assertEquals(history.get(1).getAmount(), 300);
+    }
+
+    @Test
+    public void testGetTransactionsBetweenSuccess(){
+
+        TransactionHistoryDto transactionHistoryDto = new TransactionHistoryDto();
+        transactionHistoryDto.setAccountNumber("1000000000000000");
+        transactionHistoryDto.setSenderNationalID("1234567891");
+
+        LocalDate startDate = LocalDate.of(2024, 1, 1);
+        LocalDate endDate = LocalDate.of(2024, 6, 12);
+
+        Account account = new Account();
+        account.setAccountNumber("1000000000000000");
+
+        User user = new User();
+        user.setNationalId("1234567891");
+        user.setAccount(account);
+
+        List<Transaction> transactions = Arrays.asList(new Transaction(1L,600,"credit", LocalDateTime.of(2024,2,2,3,50),account),
+                new Transaction(2L,300,"credit", LocalDateTime.of(2024,1,12,5,20),account));
+
+        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
+        when(transactionRepository.findByAccount(account)).thenReturn(transactions);
+        when(userRepository.findByNationalId("1234567891")).thenReturn(Optional.of(user));
+
+        when(transactionRepository.findByTimestampBetween(startDate, endDate)).thenReturn(transactions);
+
+        List<Transaction> history = transactionService.getTransactionHistoryBetweenDate(transactionHistoryDto,startDate,endDate);
+
+        verify(transactionRepository).findByTimestampBetween(startDate, endDate);
+        assert(history.size()>0);
+    }
+
+    @Test
+    public void testGetTransactionsBetween_invalidStartDate(){
+
+        TransactionHistoryDto transactionHistoryDto = new TransactionHistoryDto();
+        transactionHistoryDto.setAccountNumber("1000000000000000");
+        transactionHistoryDto.setSenderNationalID("1234567891");
+
+        LocalDate startDate = LocalDate.of(2025, 1, 1);
+        LocalDate endDate = LocalDate.of(2024, 6, 12);
+
+        Account account = new Account();
+        account.setAccountNumber("1000000000000000");
+
+        User user = new User();
+        user.setNationalId("1234567891");
+        user.setAccount(account);
+
+        List<Transaction> transactions = Arrays.asList(new Transaction(1L,600,"credit", LocalDateTime.of(2024,2,2,3,50),account),
+                new Transaction(2L,300,"credit", LocalDateTime.of(2024,1,12,5,20),account));
+
+        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
+        when(transactionRepository.findByAccount(account)).thenReturn(transactions);
+        when(userRepository.findByNationalId("1234567891")).thenReturn(Optional.of(user));
+
+
+        Exception exception = assertThrows(InvalidTransactionException.class, ()-> transactionService.getTransactionHistoryBetweenDate(transactionHistoryDto,startDate,endDate));
+
+        verify(transactionRepository , never()).findByTimestampBetween(any(), any());
+        assertEquals(exception.getMessage() , "Invalid Start Date");
+    }
+
+    @Test
+    public void testGetTransactionsBetween_invalidEndDate(){
+
+        TransactionHistoryDto transactionHistoryDto = new TransactionHistoryDto();
+        transactionHistoryDto.setAccountNumber("1000000000000000");
+        transactionHistoryDto.setSenderNationalID("1234567891");
+
+        LocalDate startDate = LocalDate.of(2024, 1, 1);
+        LocalDate endDate = LocalDate.of(2025, 6, 12);
+
+        Account account = new Account();
+        account.setAccountNumber("1000000000000000");
+
+        User user = new User();
+        user.setNationalId("1234567891");
+        user.setAccount(account);
+
+        List<Transaction> transactions = Arrays.asList(new Transaction(1L,600,"credit", LocalDateTime.of(2024,2,2,3,50),account),
+                new Transaction(2L,300,"credit", LocalDateTime.of(2024,1,12,5,20),account));
+
+        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
+        when(transactionRepository.findByAccount(account)).thenReturn(transactions);
+        when(userRepository.findByNationalId("1234567891")).thenReturn(Optional.of(user));
+
+
+        Exception exception = assertThrows(InvalidTransactionException.class, ()-> transactionService.getTransactionHistoryBetweenDate(transactionHistoryDto,startDate,endDate));
+
+        verify(transactionRepository , never()).findByTimestampBetween(any(), any());
+        assertEquals(exception.getMessage() , "Invalid End Date");
+    }
+
+    @Test
+    public void testGetTransactionsBetween_invalidStartEndDate(){
+
+        TransactionHistoryDto transactionHistoryDto = new TransactionHistoryDto();
+        transactionHistoryDto.setAccountNumber("1000000000000000");
+        transactionHistoryDto.setSenderNationalID("1234567891");
+
+        LocalDate startDate = LocalDate.of(2024, 1, 1);
+        LocalDate endDate = LocalDate.of(2023, 6, 12);
+
+        Account account = new Account();
+        account.setAccountNumber("1000000000000000");
+
+        User user = new User();
+        user.setNationalId("1234567891");
+        user.setAccount(account);
+
+        List<Transaction> transactions = Arrays.asList(new Transaction(1L,600,"credit", LocalDateTime.of(2024,2,2,3,50),account),
+                new Transaction(2L,300,"credit", LocalDateTime.of(2024,1,12,5,20),account));
+
+        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
+        when(transactionRepository.findByAccount(account)).thenReturn(transactions);
+        when(userRepository.findByNationalId("1234567891")).thenReturn(Optional.of(user));
+
+
+        Exception exception = assertThrows(InvalidTransactionException.class, ()-> transactionService.getTransactionHistoryBetweenDate(transactionHistoryDto,startDate,endDate));
+
+        verify(transactionRepository , never()).findByTimestampBetween(any(), any());
+        assertEquals(exception.getMessage() , "Start Date cannot be after End Date");
     }
 }

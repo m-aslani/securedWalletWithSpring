@@ -142,6 +142,26 @@ public class UserControllerTest {
 
     @Test
     public void testFieldValidation() throws Exception {
+        UserRegistrationDto userRegistrationDto = getUserRegistrationDto();
+
+        mockMvc.perform(post("/users/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(userRegistrationDto)))
+                .andDo(print())
+                .andExpect(status().isBadRequest());
+//                .andExpect(jsonPath("$.nationalId").value("Iranian national ID must include 10 digits!"));
+//                .andExpect(jsonPath("$[0].firstname").value("user first name can NOT be Empty!"));
+//                .andExpect(jsonPath("$.lastname").value("user last name can NOT be Empty!"))
+//                .andExpect(jsonPath("$.password").value("user password can NOT be Empty!"))
+//                .andExpect(jsonPath("$.email").value("E-mail is not valid!"))
+//                .andExpect(jsonPath("$.phoneNumber").value("phone number is not valid!"))
+//                .andExpect(jsonPath("$.birthDate").value("user birth date can NOT be Empty!"))
+//                .andExpect(jsonPath("$.gender").value("user gender can NOT be Empty!"))
+//                .andExpect(jsonPath("$.initialAmount").value("Initial Amount can Not be null!"));
+
+    }
+
+    private static UserRegistrationDto getUserRegistrationDto() {
         UserRegistrationDto userRegistrationDto = new UserRegistrationDto();
         userRegistrationDto.setNationalId("1234567891");
         userRegistrationDto.setFirstname("");
@@ -153,27 +173,7 @@ public class UserControllerTest {
         userRegistrationDto.setGender("female");
         userRegistrationDto.setMilitaryStatus(false);
         userRegistrationDto.setInitialAmount(50);
-
-//        User user = new User();
-//        user.setNationalId("1234567891");
-//
-//        when(userService.getUserByNationalId("1234567891")).thenReturn(Optional.of(user));
-
-        mockMvc.perform(post("/users/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(userRegistrationDto)))
-                .andDo(print())
-                .andExpect(status().isBadRequest());
-//                .andExpect(jsonPath("$.nationalId").value("Iranian national ID must include 10 digits!"));
-//                .andExpect(jsonPath("$.firstname").value("user first name can NOT be Empty!"));
-//                .andExpect(jsonPath("$.lastname").value("user last name can NOT be Empty!"))
-//                .andExpect(jsonPath("$.password").value("user password can NOT be Empty!"))
-//                .andExpect(jsonPath("$.email").value("E-mail is not valid!"))
-//                .andExpect(jsonPath("$.phoneNumber").value("phone number is not valid!"))
-//                .andExpect(jsonPath("$.birthDate").value("user birth date can NOT be Empty!"))
-//                .andExpect(jsonPath("$.gender").value("user gender can NOT be Empty!"))
-//                .andExpect(jsonPath("$.initialAmount").value("Initial Amount can Not be null!"));
-
+        return userRegistrationDto;
     }
 
     @Test

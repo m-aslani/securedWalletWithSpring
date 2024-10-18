@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 import com.example.securedwalletwithspring.controller.TransactionController;
 import com.example.securedwalletwithspring.dto.TransactionDto;
 import com.example.securedwalletwithspring.dto.TransactionHistoryDto;
+import com.example.securedwalletwithspring.entity.Account;
 import com.example.securedwalletwithspring.entity.Transaction;
 import com.example.securedwalletwithspring.service.CustomUserDetailsService;
 import com.example.securedwalletwithspring.service.JwtService;
@@ -22,7 +23,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -100,6 +104,7 @@ public class TransactionControllerTest {
     public void testGetTransactionsSuccess() throws Exception {
         TransactionHistoryDto transactionDto = new TransactionHistoryDto();
         transactionDto.setAccountNumber("1000000000000000");
+        transactionDto.setSenderNationalID("1234567891");
 
         when(transactionService.getTransactionHistory(any(TransactionHistoryDto.class))).thenReturn(new ArrayList<>());
 
@@ -108,6 +113,33 @@ public class TransactionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(transactionDto))
                 ).andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
+    }
+
+    @Test
+    public void testGetTransactionBetweenSuccess() throws Exception {
+        TransactionHistoryDto transactionDto = new TransactionHistoryDto();
+        transactionDto.setAccountNumber("1000000000000000");
+        transactionDto.setSenderNationalID("1234567891");
+
+        LocalDate startDate = LocalDate.of(2024, 1, 1);
+        LocalDate endDate = LocalDate.of(2024, 6, 12);
+
+        Account account = new Account();
+        account.setAccountNumber("1000000000000000");
+
+        List<Transaction> transactions = Arrays.asList(new Transaction(1L,600,"credit", LocalDateTime.of(2024,2,2,3,50),account),
+                new Transaction(2L,300,"credit", LocalDateTime.of(2024,1,1,5,20),account));
+
+        when(transactionService.getTransactionHistoryBetweenDate(eq(transactionDto) , eq(startDate) ,eq(endDate))).thenReturn(transactions);
+
+        mockMvc.perform(get("/transaction/between")
+                .header("Authorization",token)
+                .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(transactionDto))
+                .param("from", "2024-01-01")
+                .param("to", "2024-06-12")
+        ).andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
     }
 
