@@ -48,7 +48,7 @@ public class User {
     @NotNull(message = "user militaryStatus can NOT be Empty!")
     private boolean militaryStatus;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL , orphanRemoval = true)
     private Account account;
 
     public boolean checkMilitaryStatus(String birthDate , String gender , boolean militaryStatus) {
