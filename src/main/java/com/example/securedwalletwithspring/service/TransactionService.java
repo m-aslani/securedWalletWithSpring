@@ -5,6 +5,7 @@ import com.example.securedwalletwithspring.dto.TransactionHistoryDto;
 import com.example.securedwalletwithspring.entity.Account;
 import com.example.securedwalletwithspring.entity.Transaction;
 import com.example.securedwalletwithspring.entity.User;
+import com.example.securedwalletwithspring.entity.Wallet;
 import com.example.securedwalletwithspring.exception.AccountNotFoundException;
 import com.example.securedwalletwithspring.exception.InvalidTransactionException;
 import com.example.securedwalletwithspring.repository.AccountRepository;
@@ -28,42 +29,40 @@ public class TransactionService {
     private AccountRepository accountRepository;
 
     @Autowired
-    private UserRepository userRepository;
+    private WalletService walletService;
+
+    @Autowired
+    private UserService userService;
 
     public void addMoney(TransactionDto transactionDto) {
-        Account existingAccount = checkOwnerOfAccount(transactionDto);
-        if(existingAccount.getAccountNumber().equals(transactionDto.getSender())) {
+        checkOwnerOfAccount(transactionDto.getSenderNationalID() , transactionDto.getSender());
             if (transactionDto.getSender().equals(transactionDto.getReceiver())) {
                 Optional<Account> account = accountRepository.findByAccountNumber(transactionDto.getSender());
-                if (account.isPresent()) {
+                if (account.isPresent() && account.get().isActive()) {
                     double todayBalance = getTodayTotalTransactions(account.get());
                     if(todayBalance + transactionDto.getAmount() < 1000) { // consider ceiling is 1000$ per day
                         double newBalance = transactionDto.getAmount() + account.get().getAccountBalance();
                         account.get().setAccountBalance(newBalance);
                         accountRepository.save(account.get());
-
+                        walletService.updateTotalWalletBalance(account.get().getWallet());
                         createTransaction(transactionDto, account.get());
                     }else {
                         throw new InvalidTransactionException("you reached your today's ceiling.");
                     }
                 } else {
-                    throw new AccountNotFoundException("Account number: " + transactionDto.getSender() + " does not exist");
+                    throw new AccountNotFoundException("Account number: " + transactionDto.getSender() + " does not exist or is disabled");
                 }
             } else {
                 throw new InvalidTransactionException("Sender and Receiver must be the same");
             }
-        }else{
-            throw new InvalidTransactionException("Sender National Id "+transactionDto.getSenderNationalID()+" does not have access to account number : "+transactionDto.getSender());
-        }
     }
 
     public void transferMoney(TransactionDto transactionDto) {
-        Account existingAccount = checkOwnerOfAccount(transactionDto);
-        if(existingAccount.getAccountNumber().equals(transactionDto.getSender())) {
+        checkOwnerOfAccount(transactionDto.getSenderNationalID() , transactionDto.getSender());
         if(!transactionDto.getSender().equals(transactionDto.getReceiver())) {
             Optional<Account> senderAccount = accountRepository.findByAccountNumber(transactionDto.getSender());
             Optional<Account> receiverAccount = accountRepository.findByAccountNumber(transactionDto.getReceiver());
-            if(senderAccount.isPresent() && receiverAccount.isPresent()) {
+            if(senderAccount.isPresent() && receiverAccount.isPresent() && senderAccount.get().isActive() && receiverAccount.get().isActive()) {
                 if(senderAccount.get().getAccountBalance() >= transactionDto.getAmount()) {
                     double todayBalance = getTodayTotalTransactions(senderAccount.get());
                     if(todayBalance + transactionDto.getAmount() < 1000) {
@@ -71,6 +70,9 @@ public class TransactionService {
                         receiverAccount.get().setAccountBalance(receiverAccount.get().getAccountBalance() + transactionDto.getAmount());
                         accountRepository.save(senderAccount.get());
                         accountRepository.save(receiverAccount.get());
+
+                        walletService.updateTotalWalletBalance(senderAccount.get().getWallet());
+                        walletService.updateTotalWalletBalance(receiverAccount.get().getWallet());
 
                         createTransaction(transactionDto , senderAccount.get());
                     }else {
@@ -80,29 +82,22 @@ public class TransactionService {
                     throw new InvalidTransactionException("Sender Balance is not enough");
                 }
             }else{
-                throw new AccountNotFoundException("Sender with account number: "+ transactionDto.getSender() + " and Receiver with account number: "+ transactionDto.getReceiver() + " does not exist");
+                throw new AccountNotFoundException("Sender with account number: "+ transactionDto.getSender() + " OR Receiver with account number: "+ transactionDto.getReceiver() + " does not exist OR they are disabled");
             }
         }else {
             throw new InvalidTransactionException("Sender and Receiver cannot be the same");
         }
-        }else{
-            throw new InvalidTransactionException("Sender National Id "+transactionDto.getSenderNationalID()+" does not have access to account number : "+transactionDto.getSender());
-        }
     }
 
     public List<Transaction> getTransactionHistory(TransactionHistoryDto transactionHistoryDto) {
-        Account existingAccount = checkOwnerOfAccount(transactionHistoryDto);
-        if(existingAccount.getAccountNumber().equals(transactionHistoryDto.getAccountNumber())) {
+        checkOwnerOfAccount(transactionHistoryDto.getSenderNationalID() , transactionHistoryDto.getAccountNumber());
         Optional<Account> account = accountRepository.findByAccountNumber(transactionHistoryDto.getAccountNumber());
         return transactionRepository.findByAccount(account.get());
-        }else{
-            throw new InvalidTransactionException("Sender National Id "+transactionHistoryDto.getSenderNationalID()+" does not have access to account number : "+transactionHistoryDto.getAccountNumber());
-        }
     }
 
     public List<Transaction> getTransactionHistoryBetweenDate(TransactionHistoryDto transactionHistoryDto , LocalDate startDate , LocalDate endDate) {
-        Account existingAccount = checkOwnerOfAccount(transactionHistoryDto);
-        if(existingAccount.getAccountNumber().equals(transactionHistoryDto.getAccountNumber())) {
+        checkOwnerOfAccount(transactionHistoryDto.getSenderNationalID() , transactionHistoryDto.getSenderNationalID());
+
             LocalDate now = LocalDate.now();
             if(startDate.isAfter(now)){
                 throw new InvalidTransactionException("Invalid Start Date");
@@ -114,10 +109,6 @@ public class TransactionService {
                 throw new InvalidTransactionException("Start Date cannot be after End Date");
             }
             return transactionRepository.findByTimestampBetween(startDate , endDate);
-        }else {
-            throw new InvalidTransactionException("Sender National Id "+transactionHistoryDto.getSenderNationalID()+" does not have access to account number : "+transactionHistoryDto.getAccountNumber());
-
-        }
     }
 
     //Helper Methods :
@@ -131,29 +122,19 @@ public class TransactionService {
         transactionRepository.save(transaction);
     }
 
-    public Account checkOwnerOfAccount(TransactionDto transactionDto) {
-        Optional<User> user = userRepository.findByNationalId(transactionDto.getSenderNationalID());
-        if(user.isPresent()) {
-            if(user.get().getAccount() != null) {
-//                System.out.println(account.get().getAccountBalance());
-                return user.get().getAccount();
+    public void checkOwnerOfAccount(String nationalId , String accountNumber) {
+        Optional<User> user = userService.getUserByNationalId(nationalId);
+            if(user.get().getWallet() != null) {
+                List<Account> accounts = accountRepository.findByWallet(user.get().getWallet());
+                Account foundAccount = accounts.stream().filter(account->account.getAccountNumber().equals(accountNumber)).findFirst().orElse(null);
+                if(foundAccount == null) {
+                    throw new InvalidTransactionException("Sender National Id "+nationalId+" does not have access to account number : "+accountNumber);
+                }
+            }else {
+                throw new AccountNotFoundException("some error occurred.");
             }
-        }
-//        return user.get().getAccount();
-        throw new AccountNotFoundException("Account number for: "+transactionDto.getSenderNationalID() + " does not exist");
     }
 
-    public Account checkOwnerOfAccount(TransactionHistoryDto transactionHistoryDto) {
-        Optional<User> user = userRepository.findByNationalId(transactionHistoryDto.getSenderNationalID());
-        if(user.isPresent()) {
-            if(user.get().getAccount() != null) {
-//                System.out.println(account.get().getAccountBalance());
-                return user.get().getAccount();
-            }
-        }
-//        return user.get().getAccount();
-        throw new AccountNotFoundException("Account number for: "+transactionHistoryDto.getSenderNationalID() + " does not exist");
-    }
 
     public double getTodayTotalTransactions(Account account) {
         LocalDate today = LocalDate.now();

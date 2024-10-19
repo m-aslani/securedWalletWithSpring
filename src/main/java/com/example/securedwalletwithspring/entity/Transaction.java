@@ -1,5 +1,6 @@
 package com.example.securedwalletwithspring.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -30,6 +31,7 @@ public class Transaction {
 
     @ManyToOne(cascade = CascadeType.REMOVE)
     @JoinColumn(name = "account_id")
+    @JsonIgnore
     private Account account;
 
 }

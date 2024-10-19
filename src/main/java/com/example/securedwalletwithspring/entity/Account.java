@@ -18,6 +18,7 @@ import java.util.Random;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Table(name = "account_TB")
 public class Account {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,12 +38,19 @@ public class Account {
     @Size(min = 24 , max = 24 , message = "IBAN must have 24 digits!")
     private String accountIban;
 
-    @OneToOne
-    @JoinColumn(name = "user_id")
-    @JsonIgnore
-    private User user;
+    private boolean active = true;
+
+//    @OneToOne
+//    @JoinColumn(name = "user_id")
+//    @JsonIgnore
+//    private User user;
+
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "wallet_id")
+    private Wallet wallet;
 
     @OneToMany(mappedBy = "account", orphanRemoval = true)
+    @JsonIgnore
     private List<Transaction> transactions;
 
     // Generates 16 random digits to create account Number.

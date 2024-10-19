@@ -12,7 +12,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "my_user")
+@Table(name = "user_TB")
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,8 +48,11 @@ public class User {
     @NotNull(message = "user militaryStatus can NOT be Empty!")
     private boolean militaryStatus;
 
+//    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL , orphanRemoval = true)
+//    private Account account;
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL , orphanRemoval = true)
-    private Account account;
+    private Wallet wallet;
 
     public boolean checkMilitaryStatus(String birthDate , String gender , boolean militaryStatus) {
         if(gender.equals("male") && !militaryStatus) {
