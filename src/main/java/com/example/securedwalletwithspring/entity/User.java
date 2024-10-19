@@ -1,5 +1,6 @@
 package com.example.securedwalletwithspring.entity;
 
+import com.example.securedwalletwithspring.entity.enums.Gender;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -42,8 +43,9 @@ public class User {
     @NotBlank(message = "user birth date can NOT be Empty!")
     private String birthDate;
 
-    @NotBlank(message = "user gender can NOT be Empty!")
-    private String gender;
+    @NotNull(message = "user gender can NOT be Empty!")
+    @Enumerated(EnumType.STRING)
+    private Gender gender;
 
     @NotNull(message = "user militaryStatus can NOT be Empty!")
     private boolean militaryStatus;
@@ -54,8 +56,8 @@ public class User {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL , orphanRemoval = true)
     private Wallet wallet;
 
-    public boolean checkMilitaryStatus(String birthDate , String gender , boolean militaryStatus) {
-        if(gender.equals("male") && !militaryStatus) {
+    public boolean checkMilitaryStatus(String birthDate , Gender gender , boolean militaryStatus) {
+        if(gender == Gender.MALE && !militaryStatus) {
             String[] date = birthDate.split("/");
             int year = Integer.parseInt(date[2]);
             int currentYear = LocalDate.now().getYear();

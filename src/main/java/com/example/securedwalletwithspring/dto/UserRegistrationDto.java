@@ -1,5 +1,6 @@
 package com.example.securedwalletwithspring.dto;
 
+import com.example.securedwalletwithspring.entity.enums.Gender;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -36,8 +37,8 @@ public class UserRegistrationDto {
     @NotBlank(message = "user birth date can NOT be Empty!")
     private String birthDate;
 
-    @NotBlank(message = "user gender can NOT be Empty!")
-    private String gender;
+    @NotNull(message = "user gender can NOT be Empty!")
+    private Gender gender;
 
     @NotNull(message = "user militaryStatus can NOT be Empty!")
     private boolean militaryStatus;
