@@ -1,5 +1,6 @@
 package com.example.securedwalletwithspring.controller;
 
+import com.example.securedwalletwithspring.dto.EditedUserDto;
 import com.example.securedwalletwithspring.dto.UserLoginDto;
 import com.example.securedwalletwithspring.dto.UserRegistrationDto;
 import com.example.securedwalletwithspring.entity.User;
@@ -10,10 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 
@@ -48,9 +46,41 @@ public class UserController {
         }
     }
 
-    @GetMapping("/test")
-    public String test() {
-        return "test";
+    @GetMapping("/user")
+    public ResponseEntity<User> getUser(@Valid @RequestBody EditedUserDto editedUserDto) {
+        User user = checkUserPresence(editedUserDto);
+        return ResponseEntity.ok().body(user);
     }
+
+    @PutMapping("/update/phoneNumber")
+    public ResponseEntity<String> updatePhoneNumber(@Valid @RequestBody EditedUserDto editedUserDto) {
+        User user = checkUserPresence(editedUserDto);
+        String phoneNumber = userService.updateUserPhoneNumber(editedUserDto, user);
+        return ResponseEntity.ok().body("Your phone number changed to : "+phoneNumber);
+    }
+
+    @PutMapping("/update/email")
+    public ResponseEntity<String> updateEmail(@Valid @RequestBody EditedUserDto editedUserDto) {
+        User user = checkUserPresence(editedUserDto);
+        String email = userService.updateUserEmail(editedUserDto, user);
+        return ResponseEntity.ok().body("Your phone number changed to : "+email);
+    }
+
+    @PutMapping("/update/password")
+    public ResponseEntity<String> updatePassword(@Valid @RequestBody EditedUserDto editedUserDto) {
+        User user = checkUserPresence(editedUserDto);
+        String password = userService.updateUserPassword(editedUserDto , user);
+        return ResponseEntity.ok().body("Your phone number changed to : "+password);
+    }
+
+    private User checkUserPresence(EditedUserDto editedUserDto) {
+        Optional<User> user = userService.getUserByNationalId(editedUserDto.getNationalId());
+        if (user.isEmpty()) {
+            throw new UserNotFoundException("User with National ID " + editedUserDto.getNationalId() + " not found");
+        }
+        return user.get();
+    }
+
+
 
 }

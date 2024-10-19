@@ -1,6 +1,7 @@
 package com.example.securedwalletwithspring.controllerTests;
 
 import com.example.securedwalletwithspring.controller.UserController;
+import com.example.securedwalletwithspring.dto.EditedUserDto;
 import com.example.securedwalletwithspring.dto.UserLoginDto;
 import com.example.securedwalletwithspring.dto.UserRegistrationDto;
 import com.example.securedwalletwithspring.entity.User;
@@ -25,7 +26,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -50,10 +51,17 @@ public class UserControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    private String token;
+
     @BeforeEach
     public void setup() {
         MockitoAnnotations.openMocks(this);
         this.mockMvc = MockMvcBuilders.standaloneSetup(userController).build();
+        token = "Bearer " + generateMockToken();
+    }
+
+    private String generateMockToken() {
+        return "jwtToken";
     }
 
     @Test
@@ -193,5 +201,40 @@ public class UserControllerTest {
                 .andExpect(status().isBadRequest());
 //                .andExpect(jsonPath("$.nationalId").value("user national ID can NOT be Empty!"));
 
+    }
+
+    @Test
+    public void testGetUser() throws Exception {
+        EditedUserDto editedUserDto = new EditedUserDto();
+        editedUserDto.setNationalId("1234567891");
+
+        User user = new User();
+        user.setNationalId("1234567891");
+        when(userService.getUserByNationalId("1234567891")).thenReturn(Optional.of(user));
+
+        mockMvc.perform(get("/user")
+                .header("Authorization",token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(editedUserDto))
+        ).andExpect(status().isOk());
+    }
+
+    @Test
+    public void testUpdateUser() throws Exception {
+        EditedUserDto editedUserDto = new EditedUserDto();
+        editedUserDto.setNationalId("1234567891");
+        editedUserDto.setPhoneNumber("09366524125");
+
+        User user = new User();
+        user.setNationalId("1234567891");
+        user.setPhoneNumber("09366524111");
+        when(userService.getUserByNationalId("1234567891")).thenReturn(Optional.of(user));
+        when(userService.updateUserPhoneNumber(editedUserDto , user)).thenReturn(editedUserDto.getPhoneNumber());
+
+        mockMvc.perform(put("/update/phoneNumber")
+                .header("Authorization",token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(editedUserDto))
+        ).andExpect(status().isOk());
     }
 }
