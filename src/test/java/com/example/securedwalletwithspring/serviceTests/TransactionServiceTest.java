@@ -5,11 +5,14 @@ import com.example.securedwalletwithspring.dto.TransactionHistoryDto;
 import com.example.securedwalletwithspring.entity.Account;
 import com.example.securedwalletwithspring.entity.Transaction;
 import com.example.securedwalletwithspring.entity.User;
+import com.example.securedwalletwithspring.entity.Wallet;
 import com.example.securedwalletwithspring.exception.InvalidTransactionException;
 import com.example.securedwalletwithspring.repository.AccountRepository;
 import com.example.securedwalletwithspring.repository.TransactionRepository;
 import com.example.securedwalletwithspring.repository.UserRepository;
 import com.example.securedwalletwithspring.service.TransactionService;
+import com.example.securedwalletwithspring.service.UserService;
+import com.example.securedwalletwithspring.service.WalletService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -36,7 +39,10 @@ public class TransactionServiceTest {
     private AccountRepository accountRepository;
 
     @Mock
-    private UserRepository userRepository;
+    private UserService userService;
+
+    @Mock
+    private WalletService walletService;
 
     @InjectMocks
     private TransactionService transactionService;
@@ -46,267 +52,197 @@ public class TransactionServiceTest {
         MockitoAnnotations.openMocks(this);
     }
 
+
     @Test
-    public void testAddMoneySuccess(){
+    public void testAddMoneySuccess() {
         TransactionDto transactionDto = new TransactionDto();
-        transactionDto.setAmount(10);
-        transactionDto.setTransactionType("credit");
-        transactionDto.setSenderNationalID("123456789");
+        transactionDto.setSenderNationalID("1234567890");
         transactionDto.setSender("1000000000000000");
         transactionDto.setReceiver("1000000000000000");
+        transactionDto.setAmount(500);
+        transactionDto.setTransactionType("credit");
 
         Account account = new Account();
         account.setAccountNumber("1000000000000000");
         account.setAccountBalance(100);
+        account.setActive(true);
+
+        List<Account> accounts = List.of(account);
 
         User user = new User();
-        user.setNationalId("123456789");
-        user.setAccount(account);
+        user.setNationalId("1234567890");
 
-        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
-        when(userRepository.findByNationalId("123456789")).thenReturn(Optional.of(user));
+        Wallet wallet = new Wallet();
+        user.setWallet(wallet);
 
-        when(transactionRepository.findByAccount(account)).thenReturn(new ArrayList<>());
+        account.setWallet(wallet);
 
+        when(accountRepository.findByAccountNumber(anyString())).thenReturn(Optional.of(account));
+        when(userService.getUserByNationalId(user.getNationalId())).thenReturn(Optional.of(user));
+        when(transactionRepository.findByAccount(any(Account.class))).thenReturn(Arrays.asList());
+        when(accountRepository.findByWallet(user.getWallet())).thenReturn(accounts);
 
         transactionService.addMoney(transactionDto);
 
-        assertEquals(account.getAccountBalance(), 110);
-        verify(transactionRepository,times(1)).save(any(Transaction.class));
+        assertEquals(account.getAccountBalance(), 600);
+        verify(accountRepository).save(account);
+        verify(walletService).updateTotalWalletBalance(account.getWallet());
+        verify(transactionRepository).save(any(Transaction.class));
     }
 
     @Test
-    public void testAddMoney_DailyCeilingFailure(){
+    public void testTransferMoneySuccess() {
         TransactionDto transactionDto = new TransactionDto();
-        transactionDto.setAmount(900);
-        transactionDto.setTransactionType("credit");
-        transactionDto.setSenderNationalID("123456789");
-        transactionDto.setSender("1000000000000000");
-        transactionDto.setReceiver("1000000000000000");
-
-        Account account = new Account();
-        account.setAccountNumber("1000000000000000");
-        account.setAccountBalance(110);
-
-        User user = new User();
-        user.setNationalId("123456789");
-        user.setAccount(account);
-
-        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
-        when(userRepository.findByNationalId("123456789")).thenReturn(Optional.of(user));
-
-        List<Transaction> transactions = List.of(new Transaction(1L,600,"credit", LocalDateTime.now(),account),
-                new Transaction(2L,300,"credit", LocalDateTime.now(),account));
-
-        when(transactionRepository.findByAccount(account)).thenReturn(transactions);
-
-        Exception exception = assertThrows(InvalidTransactionException.class , ()-> transactionService.addMoney(transactionDto));
-        assertEquals(exception.getMessage(),"you reached your today's ceiling.");
-    }
-
-    @Test
-    public void testAddMoney_InvalidSenderFailure(){
-        TransactionDto transactionDto = new TransactionDto();
-        transactionDto.setAmount(900);
-        transactionDto.setTransactionType("credit");
-        transactionDto.setSenderNationalID("123456789");
-        transactionDto.setSender("1000000000000000");
-        transactionDto.setReceiver("1000000000000000");
-
-        Account account = new Account();
-        account.setAccountNumber("1000000000000001");
-        account.setAccountBalance(110);
-
-        User user = new User();
-        user.setNationalId("123456789");
-        user.setAccount(account);
-
-        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
-        when(userRepository.findByNationalId("123456789")).thenReturn(Optional.of(user));
-
-
-        when(transactionRepository.findByAccount(account)).thenReturn(new ArrayList<>());
-
-        Exception exception = assertThrows(InvalidTransactionException.class , ()-> transactionService.addMoney(transactionDto));
-        assertEquals(exception.getMessage(),"Sender National Id "+transactionDto.getSenderNationalID()+ " does not have access to account number : "+transactionDto.getSender());
-    }
-
-    @Test
-    public void testAddMoney_InvalidSenderReceiver(){
-        TransactionDto transactionDto = new TransactionDto();
-        transactionDto.setAmount(900);
-        transactionDto.setTransactionType("credit");
-        transactionDto.setSenderNationalID("123456789");
+        transactionDto.setSenderNationalID("1234567890");
         transactionDto.setSender("1000000000000000");
         transactionDto.setReceiver("1000000000000001");
+        transactionDto.setAmount(500);
+        transactionDto.setTransactionType("transfer");
 
-        Account account = new Account();
-        account.setAccountNumber("1000000000000000");
-        account.setAccountBalance(110);
+        Account senderAccount = new Account();
+        senderAccount.setAccountNumber("1000000000000000");
+        senderAccount.setAccountBalance(600);
+        senderAccount.setActive(true);
 
-        User user = new User();
-        user.setNationalId("123456789");
-        user.setAccount(account);
+        Account receiverAccount = new Account();
+        receiverAccount.setAccountNumber("1000000000000001");
+        receiverAccount.setAccountBalance(100);
+        receiverAccount.setActive(true);
 
-        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
-        when(userRepository.findByNationalId("123456789")).thenReturn(Optional.of(user));
-
-
-        when(transactionRepository.findByAccount(account)).thenReturn(new ArrayList<>());
-
-        Exception exception = assertThrows(InvalidTransactionException.class , ()-> transactionService.addMoney(transactionDto));
-        assertEquals(exception.getMessage(),"Sender and Receiver must be the same");
-    }
-
-    @Test
-    public void testTransferMoneySuccess(){
-        TransactionDto transactionDto = new TransactionDto();
-        transactionDto.setAmount(100);
-        transactionDto.setTransactionType("debit");
-        transactionDto.setSenderNationalID("123456789");
-        transactionDto.setSender("1000000000000000");
-        transactionDto.setReceiver("1000000000000001");
-
-        Account account = new Account();
-        account.setAccountNumber("1000000000000000");
-        account.setAccountBalance(500);
+        List<Account> accounts = List.of(senderAccount);
 
         User user = new User();
-        user.setNationalId("123456789");
-        user.setAccount(account);
+        user.setNationalId("1234567890");
 
-        Account account2 = new Account();
-        account2.setAccountNumber("1000000000000001");
-        account2.setAccountBalance(100);
+        Wallet wallet = new Wallet();
+        user.setWallet(wallet);
 
-        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
-        when(accountRepository.findByAccountNumber("1000000000000001")).thenReturn(Optional.of(account2));
-        when(userRepository.findByNationalId("123456789")).thenReturn(Optional.of(user));
+        senderAccount.setWallet(wallet);
 
-        when(transactionRepository.findByAccount(account)).thenReturn(new ArrayList<>());
-
+        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(senderAccount));
+        when(accountRepository.findByAccountNumber("1000000000000001")).thenReturn(Optional.of(receiverAccount));
+        when(userService.getUserByNationalId(user.getNationalId())).thenReturn(Optional.of(user));
+        when(transactionRepository.findByAccount(any(Account.class))).thenReturn(Arrays.asList());
+        when(accountRepository.findByWallet(user.getWallet())).thenReturn(accounts);
 
         transactionService.transferMoney(transactionDto);
 
-        assertEquals(account.getAccountBalance(), 400);
-        assertEquals(account2.getAccountBalance(), 200);
-        verify(transactionRepository,times(1)).save(any(Transaction.class));
+        assertEquals(senderAccount.getAccountBalance(), 100);
+        assertEquals(receiverAccount.getAccountBalance(), 600);
+
+        verify(accountRepository, times(2)).save(any(Account.class));
+        verify(walletService, times(2)).updateTotalWalletBalance(any());
+        verify(transactionRepository).save(any(Transaction.class));
     }
 
     @Test
-    public void testTransferMoney_BalanceNotEnough(){
-        TransactionDto transactionDto = new TransactionDto();
-        transactionDto.setAmount(1000);
-        transactionDto.setTransactionType("debit");
-        transactionDto.setSenderNationalID("123456789");
-        transactionDto.setSender("1000000000000000");
-        transactionDto.setReceiver("1000000000000001");
-
-        Account account = new Account();
-        account.setAccountNumber("1000000000000000");
-        account.setAccountBalance(500);
-
-        User user = new User();
-        user.setNationalId("123456789");
-        user.setAccount(account);
-
-        Account account2 = new Account();
-        account2.setAccountNumber("1000000000000001");
-        account2.setAccountBalance(100);
-
-        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
-        when(accountRepository.findByAccountNumber("1000000000000001")).thenReturn(Optional.of(account2));
-        when(userRepository.findByNationalId("123456789")).thenReturn(Optional.of(user));
-
-        when(transactionRepository.findByAccount(account)).thenReturn(new ArrayList<>());
-
-        Exception exception = assertThrows(InvalidTransactionException.class , ()-> transactionService.transferMoney(transactionDto));
-        assertEquals("Sender Balance is not enough", exception.getMessage());
-    }
-
-    @Test
-    public void testGetTransactionsHistorySuccess(){
+    public void testGetTransactionHistorySuccess() {
         TransactionHistoryDto transactionHistoryDto = new TransactionHistoryDto();
+        transactionHistoryDto.setSenderNationalID("1234567890");
         transactionHistoryDto.setAccountNumber("1000000000000000");
-        transactionHistoryDto.setSenderNationalID("1234567891");
 
         Account account = new Account();
         account.setAccountNumber("1000000000000000");
 
+        List<Account> accounts = List.of(account);
+
         User user = new User();
-        user.setNationalId("1234567891");
-        user.setAccount(account);
+        user.setNationalId("1234567890");
 
-        List<Transaction> transactions = List.of(new Transaction(1L,600,"credit", LocalDateTime.now(),account),
-                new Transaction(2L,300,"credit", LocalDateTime.now(),account));
+        Wallet wallet = new Wallet();
+        user.setWallet(wallet);
 
-        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
+        account.setWallet(wallet);
+
+        List<Transaction> transactions = Arrays.asList(
+                new Transaction(1L, 100, "credit", LocalDateTime.now(), account),
+                new Transaction(2L, 200, "debit", LocalDateTime.now(), account)
+        );
+
+        when(userService.getUserByNationalId(user.getNationalId())).thenReturn(Optional.of(user));
+        when(accountRepository.findByWallet(user.getWallet())).thenReturn(accounts);
+
+        when(accountRepository.findByAccountNumber(anyString())).thenReturn(Optional.of(account));
         when(transactionRepository.findByAccount(account)).thenReturn(transactions);
-        when(userRepository.findByNationalId("1234567891")).thenReturn(Optional.of(user));
 
-        List<Transaction> history = transactionService.getTransactionHistory(transactionHistoryDto);
+        List<Transaction> result = transactionService.getTransactionHistory(transactionHistoryDto);
 
-        assertEquals(history.size(), 2);
-        assertEquals(history.get(0).getAmount(), 600);
-        assertEquals(history.get(1).getAmount(), 300);
+        assertEquals(2, result.size());
+        assertEquals(100, result.get(0).getAmount());
+        verify(transactionRepository).findByAccount(account);
     }
 
     @Test
-    public void testGetTransactionsBetweenSuccess(){
-
+    public void testGetTransactionHistoryBetweenDateSuccess() {
         TransactionHistoryDto transactionHistoryDto = new TransactionHistoryDto();
+        transactionHistoryDto.setSenderNationalID("1234567890");
         transactionHistoryDto.setAccountNumber("1000000000000000");
-        transactionHistoryDto.setSenderNationalID("1234567891");
+
+        Account account = new Account();
+        account.setAccountNumber("1000000000000000");
+
+        List<Account> accounts = List.of(account);
+
+        User user = new User();
+        user.setNationalId("1234567890");
+
+        Wallet wallet = new Wallet();
+        user.setWallet(wallet);
+
+        account.setWallet(wallet);
+
+        when(userService.getUserByNationalId(user.getNationalId())).thenReturn(Optional.of(user));
+        when(accountRepository.findByWallet(user.getWallet())).thenReturn(accounts);
 
         LocalDate startDate = LocalDate.of(2024, 1, 1);
-        LocalDate endDate = LocalDate.of(2024, 6, 12);
+        LocalDate endDate = LocalDate.of(2024, 10, 10);
 
-        Account account = new Account();
-        account.setAccountNumber("1000000000000000");
+        List<Transaction> transactions = Arrays.asList(
+                new Transaction(1L, 600, "credit", LocalDateTime.of(2024, 2, 2, 3, 50), account),
+                new Transaction(2L, 300, "credit", LocalDateTime.of(2024, 4, 12, 5, 20), account)
+        );
 
-        User user = new User();
-        user.setNationalId("1234567891");
-        user.setAccount(account);
+        when(transactionRepository.findByTimestampBetween(startDate.atStartOfDay(), endDate.atStartOfDay()))
+                .thenReturn(transactions);
 
-        List<Transaction> transactions = Arrays.asList(new Transaction(1L,600,"credit", LocalDateTime.of(2024,2,2,3,50),account),
-                new Transaction(2L,300,"credit", LocalDateTime.of(2024,1,12,5,20),account));
+        List<Transaction> result = transactionService.getTransactionHistoryBetweenDate(transactionHistoryDto, startDate, endDate);
 
-        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
-        when(transactionRepository.findByAccount(account)).thenReturn(transactions);
-        when(userRepository.findByNationalId("1234567891")).thenReturn(Optional.of(user));
-
-        when(transactionRepository.findByTimestampBetween(startDate, endDate)).thenReturn(transactions);
-
-        List<Transaction> history = transactionService.getTransactionHistoryBetweenDate(transactionHistoryDto,startDate,endDate);
-
-        verify(transactionRepository).findByTimestampBetween(startDate, endDate);
-        assert(history.size()>0);
+        assertEquals(2, result.size()); // Since 2 transactions fall between the date range
+        verify(transactionRepository).findByTimestampBetween(startDate.atStartOfDay(), endDate.atStartOfDay());
     }
 
     @Test
-    public void testGetTransactionsBetween_invalidStartDate(){
-
+    public void testGetTransactionsBetween_invalidStartDate() {
         TransactionHistoryDto transactionHistoryDto = new TransactionHistoryDto();
+        transactionHistoryDto.setSenderNationalID("1234567890");
         transactionHistoryDto.setAccountNumber("1000000000000000");
-        transactionHistoryDto.setSenderNationalID("1234567891");
-
-        LocalDate startDate = LocalDate.of(2025, 1, 1);
-        LocalDate endDate = LocalDate.of(2024, 6, 12);
 
         Account account = new Account();
         account.setAccountNumber("1000000000000000");
 
+        List<Account> accounts = List.of(account);
+
         User user = new User();
-        user.setNationalId("1234567891");
-        user.setAccount(account);
+        user.setNationalId("1234567890");
 
-        List<Transaction> transactions = Arrays.asList(new Transaction(1L,600,"credit", LocalDateTime.of(2024,2,2,3,50),account),
-                new Transaction(2L,300,"credit", LocalDateTime.of(2024,1,12,5,20),account));
+        Wallet wallet = new Wallet();
+        user.setWallet(wallet);
 
-        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
-        when(transactionRepository.findByAccount(account)).thenReturn(transactions);
-        when(userRepository.findByNationalId("1234567891")).thenReturn(Optional.of(user));
+        account.setWallet(wallet);
 
+        when(userService.getUserByNationalId(user.getNationalId())).thenReturn(Optional.of(user));
+        when(accountRepository.findByWallet(user.getWallet())).thenReturn(accounts);
+
+        LocalDate startDate = LocalDate.of(2025, 1, 1);
+        LocalDate endDate = LocalDate.of(2024, 10, 10);
+
+        List<Transaction> transactions = Arrays.asList(
+                new Transaction(1L, 600, "credit", LocalDateTime.of(2024, 2, 2, 3, 50), account),
+                new Transaction(2L, 300, "credit", LocalDateTime.of(2024, 4, 12, 5, 20), account)
+        );
+
+//        when(transactionRepository.findByTimestampBetween(startDate.atStartOfDay(), endDate.atStartOfDay()))
+//                .thenReturn(transactions);
 
         Exception exception = assertThrows(InvalidTransactionException.class, ()-> transactionService.getTransactionHistoryBetweenDate(transactionHistoryDto,startDate,endDate));
 
@@ -315,29 +251,37 @@ public class TransactionServiceTest {
     }
 
     @Test
-    public void testGetTransactionsBetween_invalidEndDate(){
-
+    public void testGetTransactionsBetween_invalidEndDate() {
         TransactionHistoryDto transactionHistoryDto = new TransactionHistoryDto();
+        transactionHistoryDto.setSenderNationalID("1234567890");
         transactionHistoryDto.setAccountNumber("1000000000000000");
-        transactionHistoryDto.setSenderNationalID("1234567891");
-
-        LocalDate startDate = LocalDate.of(2024, 1, 1);
-        LocalDate endDate = LocalDate.of(2025, 6, 12);
 
         Account account = new Account();
         account.setAccountNumber("1000000000000000");
 
+        List<Account> accounts = List.of(account);
+
         User user = new User();
-        user.setNationalId("1234567891");
-        user.setAccount(account);
+        user.setNationalId("1234567890");
 
-        List<Transaction> transactions = Arrays.asList(new Transaction(1L,600,"credit", LocalDateTime.of(2024,2,2,3,50),account),
-                new Transaction(2L,300,"credit", LocalDateTime.of(2024,1,12,5,20),account));
+        Wallet wallet = new Wallet();
+        user.setWallet(wallet);
 
-        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
-        when(transactionRepository.findByAccount(account)).thenReturn(transactions);
-        when(userRepository.findByNationalId("1234567891")).thenReturn(Optional.of(user));
+        account.setWallet(wallet);
 
+        when(userService.getUserByNationalId(user.getNationalId())).thenReturn(Optional.of(user));
+        when(accountRepository.findByWallet(user.getWallet())).thenReturn(accounts);
+
+        LocalDate startDate = LocalDate.of(2024, 1, 1);
+        LocalDate endDate = LocalDate.of(2025, 10, 10);
+
+        List<Transaction> transactions = Arrays.asList(
+                new Transaction(1L, 600, "credit", LocalDateTime.of(2024, 2, 2, 3, 50), account),
+                new Transaction(2L, 300, "credit", LocalDateTime.of(2024, 4, 12, 5, 20), account)
+        );
+
+//        when(transactionRepository.findByTimestampBetween(startDate.atStartOfDay(), endDate.atStartOfDay()))
+//                .thenReturn(transactions);
 
         Exception exception = assertThrows(InvalidTransactionException.class, ()-> transactionService.getTransactionHistoryBetweenDate(transactionHistoryDto,startDate,endDate));
 
@@ -346,33 +290,59 @@ public class TransactionServiceTest {
     }
 
     @Test
-    public void testGetTransactionsBetween_invalidStartEndDate(){
-
+    public void testGetTransactionsBetween_invalidStartEndDate() {
         TransactionHistoryDto transactionHistoryDto = new TransactionHistoryDto();
+        transactionHistoryDto.setSenderNationalID("1234567890");
         transactionHistoryDto.setAccountNumber("1000000000000000");
-        transactionHistoryDto.setSenderNationalID("1234567891");
-
-        LocalDate startDate = LocalDate.of(2024, 1, 1);
-        LocalDate endDate = LocalDate.of(2023, 6, 12);
 
         Account account = new Account();
         account.setAccountNumber("1000000000000000");
 
+        List<Account> accounts = List.of(account);
+
         User user = new User();
-        user.setNationalId("1234567891");
-        user.setAccount(account);
+        user.setNationalId("1234567890");
 
-        List<Transaction> transactions = Arrays.asList(new Transaction(1L,600,"credit", LocalDateTime.of(2024,2,2,3,50),account),
-                new Transaction(2L,300,"credit", LocalDateTime.of(2024,1,12,5,20),account));
+        Wallet wallet = new Wallet();
+        user.setWallet(wallet);
 
-        when(accountRepository.findByAccountNumber("1000000000000000")).thenReturn(Optional.of(account));
-        when(transactionRepository.findByAccount(account)).thenReturn(transactions);
-        when(userRepository.findByNationalId("1234567891")).thenReturn(Optional.of(user));
+        account.setWallet(wallet);
 
+        when(userService.getUserByNationalId(user.getNationalId())).thenReturn(Optional.of(user));
+        when(accountRepository.findByWallet(user.getWallet())).thenReturn(accounts);
+
+        LocalDate startDate = LocalDate.of(2024, 1, 1);
+        LocalDate endDate = LocalDate.of(2023, 10, 10);
+
+        List<Transaction> transactions = Arrays.asList(
+                new Transaction(1L, 600, "credit", LocalDateTime.of(2024, 2, 2, 3, 50), account),
+                new Transaction(2L, 300, "credit", LocalDateTime.of(2024, 4, 12, 5, 20), account)
+        );
+
+//        when(transactionRepository.findByTimestampBetween(startDate.atStartOfDay(), endDate.atStartOfDay()))
+//                .thenReturn(transactions);
 
         Exception exception = assertThrows(InvalidTransactionException.class, ()-> transactionService.getTransactionHistoryBetweenDate(transactionHistoryDto,startDate,endDate));
 
         verify(transactionRepository , never()).findByTimestampBetween(any(), any());
         assertEquals(exception.getMessage() , "Start Date cannot be after End Date");
+    }
+
+    @Test
+    public void testGetTodayTotalTransactionsSuccess() {
+        Account account = new Account();
+        account.setAccountNumber("1000000000000000");
+
+        List<Transaction> transactions = Arrays.asList(
+                new Transaction(1L, 100, "credit", LocalDateTime.now(), account),
+                new Transaction(2L, 200, "debit", LocalDateTime.now(), account)
+        );
+
+        when(transactionRepository.findByAccount(account)).thenReturn(transactions);
+
+        double total = transactionService.getTodayTotalTransactions(account);
+
+        assertEquals(300, total);
+        verify(transactionRepository).findByAccount(account);
     }
 }

@@ -96,7 +96,7 @@ public class TransactionService {
     }
 
     public List<Transaction> getTransactionHistoryBetweenDate(TransactionHistoryDto transactionHistoryDto , LocalDate startDate , LocalDate endDate) {
-        checkOwnerOfAccount(transactionHistoryDto.getSenderNationalID() , transactionHistoryDto.getSenderNationalID());
+        checkOwnerOfAccount(transactionHistoryDto.getSenderNationalID() , transactionHistoryDto.getAccountNumber());
 
             LocalDate now = LocalDate.now();
             if(startDate.isAfter(now)){
@@ -108,7 +108,7 @@ public class TransactionService {
             if(startDate.isAfter(endDate)){
                 throw new InvalidTransactionException("Start Date cannot be after End Date");
             }
-            return transactionRepository.findByTimestampBetween(startDate , endDate);
+            return transactionRepository.findByTimestampBetween(startDate.atStartOfDay(), endDate.atStartOfDay());
     }
 
     //Helper Methods :

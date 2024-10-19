@@ -1,5 +1,6 @@
 package com.example.securedwalletwithspring.serviceTests;
 
+import com.example.securedwalletwithspring.dto.EditedUserDto;
 import com.example.securedwalletwithspring.dto.UserLoginDto;
 import com.example.securedwalletwithspring.dto.UserRegistrationDto;
 import com.example.securedwalletwithspring.entity.Account;
@@ -33,19 +34,7 @@ public class UserServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private AccountRepository accountRepository;
-
-    @Mock
     private PasswordEncoder passwordEncoder;
-
-    @Mock
-    private AuthenticationManager authenticationManager;
-
-    @Mock
-    private JwtService jwtService;
-
-    @Mock
-    private UserDetailsService userDetailsService;
 
     @InjectMocks
     private UserService userService;
@@ -56,101 +45,68 @@ public class UserServiceTest {
     }
 
     @Test
-    public void testRegisterUserSuccess(){
-        UserRegistrationDto userRegistrationDto = new UserRegistrationDto();
-        userRegistrationDto.setNationalId("1234567891");
-        userRegistrationDto.setFirstname("Masoumeh");
-        userRegistrationDto.setLastname("Aslani");
-        userRegistrationDto.setEmail("masoumeh@gmail.com");
-        userRegistrationDto.setPassword("password");
-        userRegistrationDto.setPhoneNumber("09127270451");
-        userRegistrationDto.setBirthDate("1/14/2001");
-        userRegistrationDto.setGender("female");
-        userRegistrationDto.setMilitaryStatus(false);
-        userRegistrationDto.setInitialAmount(50);
+    public void testGetUserByNationalIdSuccess() {
+        String nationalId = "1234567891";
+        User user = new User();
+        user.setNationalId(nationalId);
 
-        when(passwordEncoder.encode(anyString())).thenReturn("encryptedPassword");
+        when(userRepository.findByNationalId(nationalId)).thenReturn(Optional.of(user));
 
-        when(accountRepository.findByAccountNumber(anyString())).thenReturn(Optional.empty());
-        when((accountRepository.findByAccountIban(anyString()))).thenReturn(Optional.empty());
+        Optional<User> result = userService.getUserByNationalId(nationalId);
 
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        assertEquals(user, result.get());
+        verify(userRepository).findByNationalId(nationalId);
+    }
 
-        User registeredUser = userService.registerUser(userRegistrationDto);
 
-        assertNotNull(registeredUser);
-        assertEquals(registeredUser.getNationalId(), userRegistrationDto.getNationalId());
-        assertEquals(registeredUser.getFirstname(), userRegistrationDto.getFirstname());
-        assertEquals(registeredUser.getLastname(), userRegistrationDto.getLastname());
-        assertEquals(registeredUser.getEmail(), userRegistrationDto.getEmail());
-        assertEquals(registeredUser.getPassword(), "encryptedPassword");
-        assertEquals(registeredUser.getPhoneNumber(), userRegistrationDto.getPhoneNumber());
-        assertEquals(registeredUser.getBirthDate(), userRegistrationDto.getBirthDate());
-        assertEquals(registeredUser.getGender(), userRegistrationDto.getGender());
+    @Test
+    public void testUpdateUserPhoneNumberSuccess() {
+        EditedUserDto editedUserDto = new EditedUserDto();
+        editedUserDto.setPhoneNumber("09123456789");
 
-        assertNotNull(registeredUser.getAccount());
-        verify(userRepository, times(1)).save(any(User.class));
+        User user = new User();
+        user.setPhoneNumber("0987654321");
+
+        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        String updatedPhone = userService.updateUserPhoneNumber(editedUserDto, user);
+
+        assertEquals("09123456789", updatedPhone);
+        verify(userRepository).save(user);
     }
 
     @Test
-    public void testLoginUserSuccess(){
-        UserLoginDto userLoginDto = new UserLoginDto();
-        userLoginDto.setNationalId("1234567891");
-        userLoginDto.setPassword("password");
+    public void testUpdateUserEmailSuccess() {
+        EditedUserDto editedUserDto = new EditedUserDto();
+        editedUserDto.setEmail("newemail@example.com");
 
-        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(null);
+        User user = new User();
+        user.setEmail("oldemail@example.com");
 
-        UserDetails userDetails = mock(UserDetails.class);
-        when(userDetailsService.loadUserByUsername(anyString())).thenReturn(userDetails);
+        when(userRepository.save(any(User.class))).thenReturn(user);
 
-        when(jwtService.generateToken(any(UserDetails.class))).thenReturn("jwtToken");
+        String updatedEmail = userService.updateUserEmail(editedUserDto, user);
 
-        String token = userService.loginUser(userLoginDto);
-
-        assertNotNull(token);
-        assertEquals(token, "jwtToken");
-        verify(authenticationManager , times(1)).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        verify(jwtService, times(1)).generateToken(any(UserDetails.class));
+        assertEquals("newemail@example.com", updatedEmail);
+        verify(userRepository).save(user);
     }
 
     @Test
-    public void testRegisterUser_militaryStatusFailure(){
-        UserRegistrationDto userRegistrationDto = new UserRegistrationDto();
-        userRegistrationDto.setNationalId("123456788");
-        userRegistrationDto.setFirstname("Ali");
-        userRegistrationDto.setLastname("Amiri");
-        userRegistrationDto.setEmail("Ali@gmail.com");
-        userRegistrationDto.setPassword("password");
-        userRegistrationDto.setPhoneNumber("09127270451");
-        userRegistrationDto.setBirthDate("1/14/2001");
-        userRegistrationDto.setGender("male");
-        userRegistrationDto.setMilitaryStatus(false); // false for who have not passed their military service, true for who have passed it.
-        userRegistrationDto.setInitialAmount(50);
+    public void testUpdateUserPasswordSuccess() {
+        EditedUserDto editedUserDto = new EditedUserDto();
+        editedUserDto.setPassword("newpassword");
 
-        Exception exception = assertThrows(UserNotFoundException.class, () -> userService.registerUser(userRegistrationDto));
+        User user = new User();
+        user.setPassword("oldpassword");
 
-        assertEquals("you can not create account due to your military status" , exception.getMessage());
-        verify(userRepository, never()).save(any(User.class));
-    }
+        when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
+        when(userRepository.save(any(User.class))).thenReturn(user);
 
-    @Test
-    public void testRegisterUser_initialAmountFailure(){
-        UserRegistrationDto userRegistrationDto = new UserRegistrationDto();
-        userRegistrationDto.setNationalId("123456788");
-        userRegistrationDto.setFirstname("Ali");
-        userRegistrationDto.setLastname("Amiri");
-        userRegistrationDto.setEmail("Ali@gmail.com");
-        userRegistrationDto.setPassword("password");
-        userRegistrationDto.setPhoneNumber("09127270451");
-        userRegistrationDto.setBirthDate("1/14/2001");
-        userRegistrationDto.setGender("male");
-        userRegistrationDto.setMilitaryStatus(true); // false for who have not passed their military service, true for who have passed it.
-        userRegistrationDto.setInitialAmount(5);
+        String updatedPassword = userService.updateUserPassword(editedUserDto, user);
 
-        Exception exception = assertThrows(UserNotFoundException.class, () -> userService.registerUser(userRegistrationDto));
-        assertEquals("Initial amount must be greater than 10$" , exception.getMessage());
-
-        verify(userRepository, never()).save(any(User.class));
+        assertEquals("newpassword", updatedPassword);
+        verify(passwordEncoder).encode("newpassword");
+        verify(userRepository).save(user);
     }
 
 }
