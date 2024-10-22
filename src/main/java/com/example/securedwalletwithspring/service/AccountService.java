@@ -23,8 +23,8 @@ public class AccountService {
     @Autowired
     private AccountRepository accountRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+//    @Autowired
+//    private UserRepository userRepository;
 
     @Autowired
     private UserService userService;
@@ -42,6 +42,10 @@ public class AccountService {
         if(user.isEmpty()){
             throw new UserNotFoundException("User with National ID " + accountDto.getNationalId() + " not found");
         }
+        if(user.get().getWallet() == null){
+            throw new UserNotFoundException("User with National ID " + accountDto.getNationalId() + " does not have a wallet");
+        }
+
         Account account = createAccount(accountDto.getInitialAmount());
         System.out.println("Account created: " + account.getAccountBalance());
         account.setWallet(user.get().getWallet());

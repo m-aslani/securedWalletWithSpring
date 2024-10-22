@@ -5,6 +5,7 @@ import com.example.securedwalletwithspring.dto.UserLoginDto;
 import com.example.securedwalletwithspring.dto.UserRegistrationDto;
 import com.example.securedwalletwithspring.entity.Account;
 import com.example.securedwalletwithspring.entity.User;
+import com.example.securedwalletwithspring.entity.Wallet;
 import com.example.securedwalletwithspring.exception.UserNotFoundException;
 import com.example.securedwalletwithspring.repository.AccountRepository;
 import com.example.securedwalletwithspring.repository.UserRepository;
@@ -27,6 +28,50 @@ public class UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JwtService jwtService;
+
+    @Autowired
+    private UserDetailsService userDetailsService;
+
+
+    public User registerUser(UserRegistrationDto userRegistrationDto) {
+        User user = new User();
+        user.setNationalId(userRegistrationDto.getNationalId());
+        user.setFirstname(userRegistrationDto.getFirstname());
+        user.setLastname(userRegistrationDto.getLastname());
+        user.setEmail(userRegistrationDto.getEmail());
+        user.setPassword(passwordEncoder.encode(userRegistrationDto.getPassword()));
+        user.setPhoneNumber(userRegistrationDto.getPhoneNumber());
+        user.setBirthDate(userRegistrationDto.getBirthDate());
+        user.setGender(userRegistrationDto.getGender());
+        user.setMilitaryStatus(userRegistrationDto.isMilitaryStatus());
+
+        boolean validUser = user.checkMilitaryStatus(user.getBirthDate() , user.getGender() , user.isMilitaryStatus());
+
+        if(!validUser) {
+            userRepository.save(user);
+
+        }else {
+            throw new UserNotFoundException("you can not create account due to your military status");
+        }
+
+//        System.out.println(user.getNationalId());
+        return user;
+    }
+
+    public String loginUser(UserLoginDto userLoginDto) {
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(userLoginDto.getNationalId(), userLoginDto.getPassword())
+        );
+
+        final UserDetails userDetails = userDetailsService.loadUserByUsername(userLoginDto.getNationalId());
+        return jwtService.generateToken(userDetails);
+    }
 
 
     public Optional<User> getUserByNationalId(String nationalId) {

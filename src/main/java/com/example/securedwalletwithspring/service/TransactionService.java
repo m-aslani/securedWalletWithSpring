@@ -128,7 +128,7 @@ public class TransactionService {
                 List<Account> accounts = accountRepository.findByWallet(user.get().getWallet());
                 Account foundAccount = accounts.stream().filter(account->account.getAccountNumber().equals(accountNumber)).findFirst().orElse(null);
                 if(foundAccount == null) {
-                    throw new InvalidTransactionException("Sender National Id "+nationalId+" does not have access to account number : "+accountNumber);
+                    throw new InvalidTransactionException("Sender National Id "+nationalId+" does not have access to account number : "+accountNumber + ", or account not found");
                 }
             }else {
                 throw new AccountNotFoundException("some error occurred.");

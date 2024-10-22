@@ -2,6 +2,7 @@ package com.example.securedwalletwithspring.service;
 
 import com.example.securedwalletwithspring.dto.UserLoginDto;
 import com.example.securedwalletwithspring.dto.UserRegistrationDto;
+import com.example.securedwalletwithspring.dto.WalletDto;
 import com.example.securedwalletwithspring.entity.Account;
 import com.example.securedwalletwithspring.entity.User;
 import com.example.securedwalletwithspring.entity.Wallet;
@@ -33,68 +34,45 @@ public class WalletService {
     @Autowired
     private WalletRepository walletRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+//    @Autowired
+//    private PasswordEncoder passwordEncoder;
+//
+//    @Autowired
+//    private AuthenticationManager authenticationManager;
+//
+//    @Autowired
+//    private JwtService jwtService;
+//
+//    @Autowired
+//    private UserDetailsService userDetailsService;
+//
+//    @Autowired
+//    private AccountService accountService;
 
     @Autowired
-    private AuthenticationManager authenticationManager;
+    private UserService userService;
 
-    @Autowired
-    private JwtService jwtService;
-
-    @Autowired
-    private UserDetailsService userDetailsService;
-
-    @Autowired
-    private AccountService accountService;
-
-    public User registerUser(UserRegistrationDto userRegistrationDto) {
-        User user = new User();
-        user.setNationalId(userRegistrationDto.getNationalId());
-        user.setFirstname(userRegistrationDto.getFirstname());
-        user.setLastname(userRegistrationDto.getLastname());
-        user.setEmail(userRegistrationDto.getEmail());
-        user.setPassword(passwordEncoder.encode(userRegistrationDto.getPassword()));
-        user.setPhoneNumber(userRegistrationDto.getPhoneNumber());
-        user.setBirthDate(userRegistrationDto.getBirthDate());
-        user.setGender(userRegistrationDto.getGender());
-        user.setMilitaryStatus(userRegistrationDto.isMilitaryStatus());
-
-        boolean validUser = user.checkMilitaryStatus(user.getBirthDate() , user.getGender() , user.isMilitaryStatus());
-
-        if(!validUser) {
-            Wallet wallet = new Wallet();
-            wallet.setUser(user);
-
-            user.setWallet(wallet);
-
-            Account account = accountService.createAccount(userRegistrationDto.getInitialAmount());
-
-            account.setWallet(wallet);
-
-            wallet.setTotalBalance(account.getAccountBalance());
-
-            userRepository.save(user);
-            walletRepository.save(wallet);
-
-            accountRepository.save(account);
-
-            }else {
-            throw new UserNotFoundException("you can not create account due to your military status");
+    public Wallet createWallet(WalletDto walletDto) {
+        Optional<User> user = userService.getUserByNationalId(walletDto.getNationalId());
+        if (user.isEmpty()) {
+            throw new UserNotFoundException("User with " +walletDto.getNationalId() + " not found");
         }
 
-//        System.out.println(user.getNationalId());
-        return user;
+        if(user.get().getWallet() != null) {
+            throw new UserNotFoundException("wallet for user with " +walletDto.getNationalId() + " already exists");
+        }
+
+        Wallet wallet = new Wallet();
+        wallet.setUser(user.get());
+
+        walletRepository.save(wallet);
+
+        user.get().setWallet(wallet);
+        userRepository.save(user.get());
+
+        return wallet;
     }
 
-    public String loginUser(UserLoginDto userLoginDto) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(userLoginDto.getNationalId(), userLoginDto.getPassword())
-        );
-
-        final UserDetails userDetails = userDetailsService.loadUserByUsername(userLoginDto.getNationalId());
-        return jwtService.generateToken(userDetails);
-    }
 
     //update total balance of wallet
     public void updateTotalWalletBalance(Wallet wallet) {

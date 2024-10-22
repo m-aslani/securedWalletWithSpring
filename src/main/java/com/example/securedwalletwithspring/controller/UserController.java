@@ -29,6 +29,30 @@ public class UserController {
     @Autowired
     private AccountService accountService;
 
+    @PostMapping("/users/register")
+    public ResponseEntity<Object> register(@Valid @RequestBody UserRegistrationDto userRegistrationDto) {
+        Optional<User> oldUser = userService.getUserByNationalId(userRegistrationDto.getNationalId());
+        if (oldUser.isEmpty()) {
+            User user = userService.registerUser(userRegistrationDto);
+            return ResponseEntity.ok(user);
+        }
+        else {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("User with NationalId " + userRegistrationDto.getNationalId() + " already exists");
+        }
+    }
+
+    @PostMapping("/users/login")
+    public ResponseEntity<String> login(@Valid @RequestBody UserLoginDto userLoginDto) {
+        Optional<User> user = userService.getUserByNationalId(userLoginDto.getNationalId());
+        if (user.isPresent()) {
+            String token = userService.loginUser(userLoginDto);
+            return ResponseEntity.ok(token);
+        }
+        else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User with NationalId " + userLoginDto.getNationalId() + " not found");
+        }
+    }
+
     @GetMapping("/user")
     public ResponseEntity<List> getUser(@Valid @RequestBody EditedUserDto editedUserDto) {
         User user = checkUserPresence(editedUserDto);

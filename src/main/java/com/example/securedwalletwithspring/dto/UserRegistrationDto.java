@@ -43,8 +43,8 @@ public class UserRegistrationDto {
     @NotNull(message = "user militaryStatus can NOT be Empty!")
     private boolean militaryStatus;
 
-    @NotNull
-    @Min(value = 1 ,message = "Initial Amount can Not be null!")
-    private double initialAmount;
+//    @NotNull
+//    @Min(value = 1 ,message = "Initial Amount can Not be null!")
+//    private double initialAmount;
 
 }
